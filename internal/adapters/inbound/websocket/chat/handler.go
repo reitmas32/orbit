@@ -20,16 +20,23 @@ import (
 type Handler struct {
 	service   ports.ChatService
 	notifier  ports.UserNotifierService
+	storage   ports.MessageStoreService    // Servicio para persistencia de mensajes
 	eb        eventbus.EventBus            // Bus de eventos para consumir desde RabbitMQ
 	Mu        sync.Mutex                   // Mutex para sincronizar el acceso a las sesiones
 	Sessions  map[string]*websocket.Conn   // Almacén de conexiones activas por SessionID
 	Broadcast chan entities.SessionMessage // Canal para transmitir mensajes a los clientes
 }
 
-func NewHandler(service ports.ChatService, notifier ports.UserNotifierService, eb eventbus.EventBus) *Handler {
+func NewHandler(
+	service ports.ChatService,
+	notifier ports.UserNotifierService,
+	storage ports.MessageStoreService,
+	eb eventbus.EventBus,
+) *Handler {
 	h := &Handler{
 		service:   service,
 		notifier:  notifier,
+		storage:   storage,
 		eb:        eb,
 		Sessions:  make(map[string]*websocket.Conn),
 		Broadcast: make(chan entities.SessionMessage, 100),
@@ -107,9 +114,15 @@ func (h *Handler) handleMessages(ctx *customctx.CustomContext, c *websocket.Conn
 			TraceID:     fmt.Sprintf("%v", ctx.Value("trace_id")),
 		}
 
-		ctx.Logger().Info("Redireccionando mensaje del usuario %s hacia el destinatario %s", userID, received.TargetID)
+		ctx.Logger().Info("Persistiendo y redireccionando mensaje del usuario %s hacia el destinatario %s", userID, received.TargetID)
 
-		// Publicar mensaje al servicio de chat (RabbitMQ)
+		// 1. Persistir el mensaje primero (Core API o Mock)
+		if err := h.storage.SaveMessage(ctx, sessionMsg); err != nil {
+			ctx.Logger().Error("Error al persistir mensaje: %v", err)
+			// Podríamos decidir si continuar o no según la criticidad
+		}
+
+		// 2. Publicar mensaje al bus (RabbitMQ) para entrega en tiempo real
 		_ = h.service.PublishMessage(ctx, sessionMsg)
 	}
 }
