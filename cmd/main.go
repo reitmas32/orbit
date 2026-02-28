@@ -9,6 +9,9 @@ import (
 	"github.com/jalocompany/orbit/internal/adapters/inbound/websocket/chat"
 	"github.com/jalocompany/orbit/internal/adapters/inbound/websocket/echo"
 
+	"github.com/fundathyon/base/core/eventbus"
+	"github.com/fundathyon/base/infrastructure/eventbus/rabbit"
+	"github.com/jalocompany/orbit/internal/core/entities"
 	chatSvc "github.com/jalocompany/orbit/internal/core/services/chat"
 	echoSvc "github.com/jalocompany/orbit/internal/core/services/echo"
 	notifierSvc "github.com/jalocompany/orbit/internal/core/services/notifier"
@@ -20,14 +23,32 @@ func main() {
 	settings.LoadDotEnv()
 	settings.LoadEnvs()
 
-	// 1. Core Logic Setup (Hexagonal Service)
+	// 1. Core Infrastructure Setup (RabbitMQ)
+	rabbitConfig := rabbit.DefaultConfig(settings.Settings.RABBITMQ_URL)
+	rabbitConfig.ExchangeName = settings.Settings.RABBITMQ_EXCHANGE
+
+	// Fábrica de eventos para reconstruir SessionMessage al consumir
+	eventFactory := func(eventName string) eventbus.Event {
+		if eventName == "session.message" {
+			return &entities.SessionMessage{}
+		}
+		return nil
+	}
+
+	eventBus, err := rabbit.NewEventBus(rabbitConfig, eventFactory)
+	if err != nil {
+		log.Fatalf("failed to connect to RabbitMQ: %v", err)
+	}
+	defer eventBus.Close()
+
+	// 2. Core Logic Setup (Hexagonal Service)
 	echoService := echoSvc.NewEchoService()
-	chatService := chatSvc.NewChatService()
+	chatService := chatSvc.NewChatService(eventBus)
 	notifierService := notifierSvc.UserNotifierFactory()
 
-	// 2. Adapter Setup (HTTP/WebSocket Handler)
+	// 3. Adapter Setup (HTTP/WebSocket Handler)
 	echoHandler := echo.NewHandler(echoService)
-	chatHandler := chat.NewHandler(chatService, notifierService)
+	chatHandler := chat.NewHandler(chatService, notifierService, eventBus)
 
 	// 3. Configure API Endpoints
 	http.Handle(settings.Settings.ROOT_PATH+"/echo", echoHandler)

@@ -25,6 +25,9 @@ type Config struct {
 	CORE_API_URL string `required:"true"`
 	CORE_API_KEY string `required:"false" default:""`
 
+	RABBITMQ_URL      string `required:"true"`
+	RABBITMQ_EXCHANGE string `required:"false" default:"orbit.chat"`
+
 	JWT_PUBLIC_KEY string `required:"true"`
 }
 

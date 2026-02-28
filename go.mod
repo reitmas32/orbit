@@ -12,6 +12,7 @@ require (
 )
 
 require (
+	github.com/rabbitmq/amqp091-go v1.10.0 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	golang.org/x/sys v0.35.0 // indirect
 )

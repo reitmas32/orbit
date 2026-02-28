@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: orbit-rabbitmq
+    ports:
+      - "5672:5672"   # RabbitMQ port
+      - "15672:15672" # Management UI port
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - orbit-network
+
+networks:
+  orbit-network:
+    driver: bridge
+
+volumes:
+  rabbitmq_data:
+
+http://localhost:9000/?access_token=
+eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcHBfaWQiOiJiNjM2ZWE3MS05MzNhLTQ1MjQtYWY0YS02OGUyZTM3NjAxMDEiLCJlbnRpdHlfaWQiOiI5YmUxYzgwYS1mMWQ3LTQzZTYtYjM1NC1mNGM2MmJmYzAxMDkiLCJlbnRpdHlfdHlwZSI6Im9hdXRoIiwiZXhwIjoxNzcyMjYzMTgyLCJpZCI6IjhkZWNiZmVlLTRhZTktNGQ5YS05YTZkLTEyZWU2MTMxMDEwNyIsImlzX2FjdGl2ZSI6dHJ1ZSwiaXNfdmVyaWZ5Ijp0cnVlLCJ1c2VyX2lkIjoiMjAxOTRmMDYtN2QyNi00ODAxLTllMjUtZmQ4N2M4M2YwMTA1In0.N0Nt-qLaxvclCBYh8zoUtJeRYYpmjBbrYZecaW0HzaLyTE-vJIC1xA09ogPxsLHeS24w0nC00cQIua22l1n_ueYRC9T8fA88hhwDXUijyiXNyUAfWz-Z4aLKNBtFxZPoen8ELlHghz-7TB1H_1fBzNikcwRd6h89rflNlqDbQOhtuYQu3j3oWWqTeDgrA_8Jg1q7W47G5otL2aT9BUoar0hFTNfJb866p5eqEH5_wiXE2XJqqkUjC5wkXoZC8zXTsebVW-5C6m002e9lbW-Ih1Fa8IvLylV2-ImlMsEcxfnwSh3-hX6eAenAOM4A6xm3CIF4QrbDmItMst95U95tpQ
+&provider=google&refresh_token=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzQ4NTQyODIsImlkIjoiODc4OGZkODctMjQ4NC00OTA5LTkwOWUtZjYyZWFhMzcwMTBiIn0.cyOxzWAgZ_blzCzVX8jDKTgjk-kPNjnaqUoTQ4BniWOPh21zNY8cLM8jY_X8EZhpqRdeJfVFjQGDOO8THDnxIfjKpteZ5hg9B9OICkQVhOHA1nKq8Eu3xah_iai77TQ0YywwMiMv8PGbAHr2OvPm3osnq6isBlp06okKil1Dssk2NB8ENWfeiI3le1DjeN8s9_QTAPACZASoWvuRmsEnLwzjSmya3joEAO7QTiJTLtmoQZojovUhrSFinBW8VDiSmdCpDN5ptWgSZ2t_vNxl_YMAb3PjzhtPZHhaDZgieAh13AoJMsuFzt4mRoQfsx0LwK4o8qLocX0OEJw6Q51LfA
+
+
