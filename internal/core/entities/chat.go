@@ -9,7 +9,8 @@ import (
 // MessageReceived representa el contenido del mensaje enviado por el usuario
 type MessageReceived struct {
 	Text      string    `json:"text" bson:"text"`
-	Type      string    `json:"type" bson:"type"` // e.g., "chat", "image", "system"
+	Kind      string    `json:"kind" bson:"kind"` // e.g., "chat", "image", "system"
+	Type      string    `json:"type" bson:"type"` // direct-message or group
 	SenderID  string    `json:"sender_id" bson:"sender_id"`
 	TargetID  string    `json:"target_id" bson:"target_id"`
 	CreatedAt time.Time `json:"created_at" bson:"created_at"`

@@ -15,6 +15,7 @@ import (
 	chatSvc "github.com/jalocompany/orbit/internal/core/services/chat"
 	echoSvc "github.com/jalocompany/orbit/internal/core/services/echo"
 	"github.com/jalocompany/orbit/internal/core/services/message_store"
+	"github.com/jalocompany/orbit/internal/core/services/multiplexer"
 	notifierSvc "github.com/jalocompany/orbit/internal/core/services/notifier"
 
 	"github.com/jalocompany/orbit/internal/core/settings"
@@ -47,10 +48,11 @@ func main() {
 	chatService := chatSvc.NewChatService(eventBus)
 	notifierService := notifierSvc.UserNotifierFactory()
 	storageService := message_store.MessageStoreFactory()
+	multiplexerService := multiplexer.MultiplexerFactory()
 
 	// 3. Adapter Setup (HTTP/WebSocket Handler)
 	echoHandler := echo.NewHandler(echoService)
-	chatHandler := chat.NewHandler(chatService, notifierService, storageService, eventBus)
+	chatHandler := chat.NewHandler(chatService, notifierService, storageService, multiplexerService, eventBus)
 
 	// 3. Configure API Endpoints
 	http.Handle(settings.Settings.ROOT_PATH+"/echo", echoHandler)

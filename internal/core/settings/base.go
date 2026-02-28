@@ -28,6 +28,9 @@ type Config struct {
 	RABBITMQ_URL      string `required:"true"`
 	RABBITMQ_EXCHANGE string `required:"false" default:"orbit.chat"`
 
+	MULTIPLEXER_API_URL string `required:"true"`
+	MULTIPLEXER_API_KEY string `required:"false" default:""`
+
 	JWT_PUBLIC_KEY string `required:"true"`
 }
 

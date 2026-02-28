@@ -8,6 +8,7 @@ Orbit is a high-performance WebSocket messaging service built with Go, following
 - **Asynchronous Broadcasting**: Utilizes **RabbitMQ** to distribute messages across multiple server nodes.
 - **User-to-User Routing**: Intelligent message routing based on Recipient IDs.
 - **Session Management**: Tracks active connections and notifies external systems about user status.
+- **Multiplexer**: Intelligent routing for group messages via external Multiplexer API.
 - **Persistence**: Automatically saves all incoming messages to a Core API.
 - **Security**: JWT Authentication (RS256) for all connections.
 - **Observability**: Structured logging with Trace IDs for request tracking.
@@ -17,7 +18,7 @@ Orbit is a high-performance WebSocket messaging service built with Go, following
 The project follows a modular hexagonal design:
 
 - **Core/Entities**: Clean business models (`SessionMessage`, `MessageReceived`).
-- **Core/Ports**: Interface definitions for services (User Notifications, Message Store).
+- **Core/Ports**: Interface definitions for services (User Notifications, Message Store, Multiplexer).
 - **Core/Services**: Business logic implementations with Factory support for **Mock/HTTP** switching.
 - **Adapters/Inbound**:
   - **WebSocket Handlers**: Manages the connection lifecycle.
@@ -48,6 +49,7 @@ Create a `.env.dev` file inside `.envs/` (or use existing ones) with the followi
 ```bash
 PORT=8003
 CORE_API_URL=mock # Change to real URL for production
+MULTIPLEXER_API_URL=mock # Groups routing logic
 RABBITMQ_URL=amqp://guest:guest@localhost:5672/
 RABBITMQ_EXCHANGE=orbit.chat
 JWT_PUBLIC_KEY=-----BEGIN PUBLIC KEY----- ...

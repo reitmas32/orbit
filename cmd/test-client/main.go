@@ -22,7 +22,8 @@ type UserConfig struct {
 
 type MessageRequest struct {
 	Text     string `json:"text"`
-	Type     string `json:"type"`
+	Kind     string `json:"kind"` // chat, image, etc.
+	Type     string `json:"type"` // direct-message, group
 	TargetID string `json:"target_id"`
 }
 
@@ -101,7 +102,8 @@ func main() {
 
 		msg := MessageRequest{
 			Text:     text,
-			Type:     "chat",
+			Kind:     "chat",
+			Type:     "direct-message",
 			TargetID: user.TargetID,
 		}
 

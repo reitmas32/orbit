@@ -17,29 +17,52 @@ import (
 	"github.com/jalocompany/orbit/internal/core/ports"
 )
 
+const (
+	MessageTypeDirect = "direct-message"
+	MessageTypeGroup  = "group"
+)
+
 type Handler struct {
-	service   ports.ChatService
-	notifier  ports.UserNotifierService
-	storage   ports.MessageStoreService    // Servicio para persistencia de mensajes
-	eb        eventbus.EventBus            // Bus de eventos para consumir desde RabbitMQ
-	Mu        sync.Mutex                   // Mutex para sincronizar el acceso a las sesiones
-	Sessions  map[string]*websocket.Conn   // Almacén de conexiones activas por SessionID
-	Broadcast chan entities.SessionMessage // Canal para transmitir mensajes a los clientes
+	service     ports.ChatService
+	notifier    ports.UserNotifierService
+	storage     ports.MessageStoreService    // Servicio para persistencia de mensajes
+	multiplexer ports.MultiplexerService     // Servicio para multiplexado de grupos
+	eb          eventbus.EventBus            // Bus de eventos para consumir desde RabbitMQ
+	Mu          sync.Mutex                   // Mutex para sincronizar el acceso a las sesiones
+	Sessions    map[string]*websocket.Conn   // Almacén de conexiones activas por SessionID
+	Broadcast   chan entities.SessionMessage // Canal para transmitir mensajes a los clientes
+
+	// Mapa de manejadores según el tipo de mensaje (direct-message, group, etc.)
+	handlers map[string]func(ctx *customctx.CustomContext, msg entities.SessionMessage) error
 }
 
 func NewHandler(
 	service ports.ChatService,
 	notifier ports.UserNotifierService,
 	storage ports.MessageStoreService,
+	multiplexer ports.MultiplexerService,
 	eb eventbus.EventBus,
 ) *Handler {
 	h := &Handler{
-		service:   service,
-		notifier:  notifier,
-		storage:   storage,
-		eb:        eb,
-		Sessions:  make(map[string]*websocket.Conn),
-		Broadcast: make(chan entities.SessionMessage, 100),
+		service:     service,
+		notifier:    notifier,
+		storage:     storage,
+		multiplexer: multiplexer,
+		eb:          eb,
+		Sessions:    make(map[string]*websocket.Conn),
+		Broadcast:   make(chan entities.SessionMessage, 100),
+	}
+
+	// 1. Inicializar mapa de manejadores de ruteo
+	h.handlers = map[string]func(ctx *customctx.CustomContext, msg entities.SessionMessage) error{
+		MessageTypeDirect: func(ctx *customctx.CustomContext, msg entities.SessionMessage) error {
+			ctx.Logger().Info("[Direct] Publicando mensaje directo hacia el bus para %s", msg.RecipientID)
+			return h.service.PublishMessage(ctx, msg)
+		},
+		MessageTypeGroup: func(ctx *customctx.CustomContext, msg entities.SessionMessage) error {
+			ctx.Logger().Info("[Multiplexer] Redireccionando mensaje de grupo hacia el multiplexer")
+			return h.multiplexer.Multiplex(ctx, msg)
+		},
 	}
 
 	// Iniciar el consumidor de broadcast que enviará mensajes desde el canal interno hacia los WS
@@ -114,16 +137,21 @@ func (h *Handler) handleMessages(ctx *customctx.CustomContext, c *websocket.Conn
 			TraceID:     fmt.Sprintf("%v", ctx.Value("trace_id")),
 		}
 
-		ctx.Logger().Info("Persistiendo y redireccionando mensaje del usuario %s hacia el destinatario %s", userID, received.TargetID)
-
-		// 1. Persistir el mensaje primero (Core API o Mock)
+		// 1. Persistir el mensaje primero (Core API o Mock) siempre
 		if err := h.storage.SaveMessage(ctx, sessionMsg); err != nil {
 			ctx.Logger().Error("Error al persistir mensaje: %v", err)
-			// Podríamos decidir si continuar o no según la criticidad
 		}
 
-		// 2. Publicar mensaje al bus (RabbitMQ) para entrega en tiempo real
-		_ = h.service.PublishMessage(ctx, sessionMsg)
+		// 2. Ejecutar el manejador correspondiente según el tipo (direct-message, group, etc.)
+		handler, exists := h.handlers[received.Type]
+		if !exists {
+			// Manejador por defecto (direct-message)
+			handler = h.handlers[MessageTypeDirect]
+		}
+
+		if err := handler(ctx, sessionMsg); err != nil {
+			ctx.Logger().Error("Error al procesar mensaje de tipo %s: %v", received.Type, err)
+		}
 	}
 }
 
