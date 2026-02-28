@@ -8,7 +8,11 @@ import (
 	"github.com/jalocompany/orbit/internal/adapters/inbound/middlewares"
 	"github.com/jalocompany/orbit/internal/adapters/inbound/websocket/chat"
 	"github.com/jalocompany/orbit/internal/adapters/inbound/websocket/echo"
-	"github.com/jalocompany/orbit/internal/core/services"
+
+	chatSvc "github.com/jalocompany/orbit/internal/core/services/chat"
+	echoSvc "github.com/jalocompany/orbit/internal/core/services/echo"
+	notifierSvc "github.com/jalocompany/orbit/internal/core/services/notifier"
+
 	"github.com/jalocompany/orbit/internal/core/settings"
 )
 
@@ -17,12 +21,13 @@ func main() {
 	settings.LoadEnvs()
 
 	// 1. Core Logic Setup (Hexagonal Service)
-	echoService := services.NewEchoService()
-	chatService := services.NewChatService()
+	echoService := echoSvc.NewEchoService()
+	chatService := chatSvc.NewChatService()
+	notifierService := notifierSvc.UserNotifierFactory()
 
 	// 2. Adapter Setup (HTTP/WebSocket Handler)
 	echoHandler := echo.NewHandler(echoService)
-	chatHandler := chat.NewHandler(chatService)
+	chatHandler := chat.NewHandler(chatService, notifierService)
 
 	// 3. Configure API Endpoints
 	http.Handle(settings.Settings.ROOT_PATH+"/echo", echoHandler)

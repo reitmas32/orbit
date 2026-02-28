@@ -22,6 +22,9 @@ type Config struct {
 	COLORED_LOG bool      `required:"false" default:"true"`
 	SERVER_ID   uuid.UUID `required:"false"`
 
+	CORE_API_URL string `required:"true"`
+	CORE_API_KEY string `required:"false" default:""`
+
 	JWT_PUBLIC_KEY string `required:"true"`
 }
 

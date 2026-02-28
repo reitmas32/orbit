@@ -1,4 +1,4 @@
-package services
+package chat
 
 import "github.com/jalocompany/orbit/internal/core/ports"
 

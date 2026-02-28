@@ -1,4 +1,4 @@
-package services
+package echo
 
 import "github.com/jalocompany/orbit/internal/core/ports"
 

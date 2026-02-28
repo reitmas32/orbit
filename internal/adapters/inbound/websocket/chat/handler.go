@@ -12,11 +12,15 @@ import (
 )
 
 type Handler struct {
-	service ports.ChatService
+	service  ports.ChatService
+	notifier ports.UserNotifierService
 }
 
-func NewHandler(service ports.ChatService) *Handler {
-	return &Handler{service: service}
+func NewHandler(service ports.ChatService, notifier ports.UserNotifierService) *Handler {
+	return &Handler{
+		service:  service,
+		notifier: notifier,
+	}
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -27,9 +31,20 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Printf("failed to accept chat websocket connection: %v", err)
 		return
 	}
-	defer c.CloseNow()
 
 	ctx := h.enrichContext(r)
+
+	// Recuperar los JWTClaims empaquetados desde el Auth Middleware
+	var userID string
+	if claims, ok := ctx.Value("claims").(*auth.JWTClaims); ok {
+		ctx.Logger().Info("Empezando a escuchar al usuario %s (AppID: %s)", claims.UserID, claims.AppID)
+		userID = claims.UserID
+	} else {
+		ctx.Logger().Warn("No se encontraron los JWT claims dentro del context")
+	}
+
+	h.onConnect(ctx, userID)
+	defer h.onDisconnect(ctx, c, userID)
 
 	h.handleMessages(ctx, c)
 }
@@ -49,13 +64,6 @@ func (h *Handler) enrichContext(r *http.Request) *customctx.CustomContext {
 }
 
 func (h *Handler) handleMessages(ctx *customctx.CustomContext, c *websocket.Conn) {
-	// Recuperar los JWTClaims empaquetados desde el Auth Middleware
-	if claims, ok := ctx.Value("claims").(*auth.JWTClaims); ok {
-		ctx.Logger().Info("Empezando a escuchar al usuario %s (AppID: %s)", claims.UserID, claims.AppID)
-	} else {
-		ctx.Logger().Warn("No se encontraron los JWT claims dentro del context")
-	}
-
 	for {
 		var msg any
 
@@ -82,4 +90,26 @@ func (h *Handler) handleMessages(ctx *customctx.CustomContext, c *websocket.Conn
 			return
 		}
 	}
+}
+
+// onConnect encapsula la lógica que se ejecuta cuando un usuario se conecta exitosamente
+func (h *Handler) onConnect(ctx *customctx.CustomContext, userID string) {
+	if userID == "" {
+		return
+	}
+	ctx.Logger().Info("Ejecutando steps de conexión para el usuario %s", userID)
+	_ = h.notifier.NotifyConnect(ctx, userID)
+
+	// Aquí puede crecer agregando más lógica en el futuro
+}
+
+// onDisconnect encapsula la lógica que se ejecuta al terminar la conexión
+func (h *Handler) onDisconnect(ctx *customctx.CustomContext, c *websocket.Conn, userID string) {
+	if userID != "" {
+		ctx.Logger().Info("Ejecutando steps de desconexión para el usuario %s", userID)
+		_ = h.notifier.NotifyDisconnect(ctx, userID)
+	}
+
+	// Asegurar cerrar la conexión de WebSocket subyacente
+	c.CloseNow()
 }
